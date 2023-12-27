@@ -1,152 +1,228 @@
-# Шаблонные интерфейсы.
-# User хранит имя, логин и пароль, и id(?)
-# Функционал: регистрация, т.е. создание нового пользователя, и авторизация,
-# а также автоавторизация - вход в аккаунт последнего вошедшего без введения пароля.
-# Приложение должно автоматически авторизовать пользователя, добавлять пользователя, поменять текущего пользователя
+from abc import ABC, abstractmethod
+from typing import List, Optional
+import json
+import os
 
-# Погребной Владимир
-# https://github.com/vdrobnik/labsOOP_py
-# https://disk.yandex.ru/d/tCHxZ0RMunDLog
-
+# Класс User представляет пользователя с идентификатором, именем, логином и паролем
 class User:
-    def __init__(self, id, name, login, password, authorize):
-        self.id = id
+    def __init__(self, user_id: int, name: str, login: str, password: str):
+        self.user_id = user_id
         self.name = name
         self.login = login
         self.password = password
-        self.authorize = authorize
 
-    def getName(self):
-        return self.name
+    def __repr__(self):
+        return f"User({self.user_id}, '{self.name}', '{self.login}')"
 
-    def getId(self):
-        return self.id
+# Абстрактный класс, определяющий основные операции: get_all, add, delete и update
+class IDataRepository(ABC):
+    @abstractmethod
+    def get_all(self) -> List[User]:
+        pass
 
-    def getLogin(self):
-        return self.login
+    @abstractmethod
+    def add(self, item: User):
+        pass
 
-    def getPassword(self):
-        return self.password
+    @abstractmethod
+    def delete(self, item: User):
+        pass
 
-    def getAuthorize(self):
-        return self.authorize
+    @abstractmethod
+    def update(self, item: User):
+        pass
 
-    def setAuthorize(self, state):
-        self.authorize = state
+# Расширяет IDataRepository, добавляя методы поиска пользователей по идентификатору и имени
+class IUserRepository(IDataRepository):
+    @abstractmethod
+    def find_by_id(self, user_id: int) -> Optional[User]:
+        pass
 
-class IUserManager(User):
-    def logIn(self, bd):
-        bdUsers = bd.getBD()
-        for i in bdUsers:
-            if i.getLogin == self.getLogin():
-                print("Пользователь с таким логином уже сущестует")
-                return False
-        bd.addOnBD(self)
-        print(f"Пользователь - {self.getName()} зарегистрирван!")
+    @abstractmethod
+    def find_by_name(self, name: str) -> List[User]:
+        pass
 
-    def signIn(self):
-        lk = True
-        while lk:
-            print("Это личный кабинет!")
-            print("1 - Выйти")
-            if int(input()) == 1:
-                lk = self.signOut()
-    def signOut(self):
-        print("Вы вышли из личного кабинета!")
+# Абстрактный класс для управления пользователями, определяющий методы входа в систему, выхода из системы и проверки подлинности
+class IUserManager(ABC):
+    @abstractmethod
+    def login(self, login: str, password: str) -> bool:
+        pass
+
+    @abstractmethod
+    def logout(self):
+        pass
+
+    @abstractmethod
+    def check_auth(self) -> bool:
+        pass
+
+# Конкретная реализация IUserManager. Управляет текущим состоянием пользователя и проверяет аутентификацию
+class FileUserManager(IUserManager):
+    def __init__(self, user_repository: IUserRepository):
+        self.user_repository = user_repository
+        self.current_user = None
+
+    def login(self, login: str, password: str) -> bool:
+        users = self.user_repository.get_all()
+        for user in users:
+            if user.login == login and user.password == password:
+                self.current_user = user
+                return True
         return False
 
+    def logout(self):
+        self.current_user = None
 
+    def check_auth(self) -> bool:
+        return self.current_user is not None
 
-class IUserRepository:
-    def __init__(self):
-        self.bd = []
+# Реализация IUserRepository с использованием файла для хранения пользовательских данных, поддерживающего чтение и запись JSON
+class FileUserRepository(IUserRepository):
+    def __init__(self, file_name="users.json"):
+        self.file_name = file_name
+        self.users = self.load_users()
 
-    def addOnBD(self, user):
-        self.bd.append(user)
+    def load_users(self):
+        if os.path.exists(self.file_name):
+            with open(self.file_name, "r") as file:
+                return json.load(file, object_hook=lambda d: User(**d))
+        return []
 
-    def getBD(self):
-        return self.bd
+    def save_users(self):
+        with open(self.file_name, "w") as file:
+            json.dump(self.users, file, default=lambda o: o.__dict__)
 
-    def delOnBD(self, id):
-        del self.bd[id]
+    def get_all(self) -> List[User]:
+        return self.users
 
-    def searchUser(self, login, password):
-        for i in self.bd:
-            if i.getLogin() == login:
-                if i.getPassword() == password:
-                    print("Вы вошли в личный кабинет!")
-                    return i
-                else:
-                    print("Неправильный пароль")
-                    return None
-        print("Такого пользователя не существует!")
+    def add(self, item: User):
+        if any(user.login == item.login for user in self.users):
+            raise ValueError("Логин уже используется")
+        self.users.append(item)
+        self.save_users()
+
+    def delete(self, item: User):
+        self.users.remove(item)
+
+    def update(self, item: User):
+        for i, user in enumerate(self.users):
+            if user.user_id == item.user_id:
+                self.users[i] = item
+
+    def find_by_id(self, user_id: int) -> Optional[User]:
+        for user in self.users:
+            if user.user_id == user_id:
+                return user
         return None
 
-    def printAutorizeUsers(self):
-        for i in self.bd:
-            if i.getAuthorize():
-                print((i.getId()+1), "-", i.getName())
+    def find_by_name(self, name: str) -> List[User]:
+        return [user for user in self.users if user.name == name]
 
-    def printAllUsers(self):
-        for i in self.bd:
-            print("------------------")
-            print("Id - ", i.getId())
-            print("Name - ", i.getName())
-            print("Login - ", i.getLogin())
-            print("Password - ", i.getPassword())
-            print("Authorize - ", i.getAuthorize())
+# Файл для хранения состояния текущего пользователя
+STATE_FILE = "user_state.json"
 
+# Загрузите текущее состояние пользователя из файла
+def load_current_user_state(user_repository):
+    if os.path.exists(STATE_FILE) and os.path.getsize(STATE_FILE) > 0:
+        try:
+            with open(STATE_FILE, "r") as file:
+                state = json.load(file)
+                user_id = state.get("user_id")
+                if user_id is not None:
+                    return user_repository.find_by_id(user_id)
+        except json.JSONDecodeError as e:
+            print(f"Ошибка при чтении файла состояния пользователя: {e}")
+    else:
+        print("Файл состояния пользователя не найден или пуст.")
+    return None
 
-if __name__ == '__main__':
-    bd = IUserRepository()
-    testUser = IUserManager(0, 'alina', 'Vova', 'vvp', True)
-    bd.addOnBD(testUser)
+# Сохраните текущее состояние пользователя в файл
+def save_current_user_state(user):
+    with open(STATE_FILE, "w") as file:
+        json.dump({"user_id": user.user_id if user else None}, file)
 
-    run = True
-    while run:
-        print("1 - Зарегистрироваться")
-        print("2 - Войти")
-        print("3 - Выйти")
-        step = int(input())
-        if step == 1:
-            print("Введите ваше имя!\n")
-            name = str(input())
-            print("Логин: ")
-            login = str(input())
-            print("Пароль: ")
-            password = str(input())
-            print("Сохранить данные о входе? (Да/Нет)")
-            authorize = str(input())
-            if (authorize == 'Да'):
-                user = IUserManager(len(bd.getBD()), name, login, password, True) # задaем id так чтобы они не повторялись
-                user.logIn(bd)
-            elif (authorize == 'Нет'):
-                user = IUserManager(len(bd.getBD()), name, login, password, False)
-                user.logIn(bd)
+# Основная функция для демонстрации системы управления пользователями
+def main():
+    user_repository = FileUserRepository()
+    user_manager = FileUserManager(user_repository)
+
+    # Попытка загрузить текущего пользователя из файла состояния
+    current_user = load_current_user_state(user_repository)
+    if current_user:
+        user_manager.current_user = current_user
+        print(f"Добро пожаловать обратно, {current_user.name}!")
+
+    while True:
+        print("\nМеню:")
+        if not user_manager.check_auth():
+            print("1. Вход в систему")
+            print("2. Зарегистрировать нового пользователя")
+        else:
+            print("3. Выход из системы")
+            print("4. Сменить пользователя")
+
+        print("0. Выход из приложения")
+
+        choice = input("Выберите опцию: ")
+
+        if choice == "2":
+            name = input("Введите имя: ").strip()
+            login = input("Введите логин: ").strip()
+            password = input("Введите пароль: ").strip()
+
+            if not name or not login or not password:
+                print("Все поля должны быть заполнены.")
+                continue
+
+            try:
+                user_id = len(user_repository.get_all()) + 1
+                new_user = User(user_id, name, login, password)
+                user_repository.add(new_user)
+                user_manager.current_user = new_user
+                save_current_user_state(new_user)
+                print("Пользователь успешно зарегистрирован.")
+            except ValueError as e:
+                print(e)
+
+        elif choice == "1":
+            if user_manager.check_auth():
+                print("Вы уже вошли в систему.")
+                continue
+
+            login = input("Введите логин: ")
+            password = input("Введите пароль: ")
+            if user_manager.login(login, password):
+                print(f"Добро пожаловать, {user_manager.current_user.name}!")
             else:
-               print("Неправильный ввод двнных")
+                print("Неверный логин или пароль.")
 
-        if step == 2:
-            print("Вы авторизованы? (Да/Нет)")
-            authorize = str(input())
-            if (authorize == 'Да'):
-                bd.printAutorizeUsers()
-                print("Выберите номер аккаунта под которым вы заходили")
-                number = int(input())
-                bd.getBD()[number - 1].signIn()
-            elif (authorize == 'Нет'):
-                print("Введите")
-                print("Логин: ")
-                login = str(input())
-                print("Пароль: ")
-                password = str(input())
-                user = bd.searchUser(login, password)
-                if user is not None:
-                    user.signIn()
-                else:
-                    print("Пользователь не найден!")
+        elif choice == "3":
+            if not user_manager.check_auth():
+                print("Вы не вошли в систему.")
+                continue
+
+            user_manager.logout()
+            print("Вы вышли из системы.")
+
+        elif choice == "4":
+            if not user_manager.check_auth():
+                print("Вы не вошли в систему.")
+                continue
+
+            user_manager.logout()
+            login = input("Введите логин нового пользователя: ")
+            password = input("Введите пароль нового пользователя: ")
+            if user_manager.login(login, password):
+                print(f"Добро пожаловать, {user_manager.current_user.name}!")
             else:
-                print("Неправильный ввод дaнных!")
-        if step == 3:
-            run = False
-            print("Пока")
+                print("Неверный логин или пароль.")
+
+        elif choice == "0":
+            break
+        else:
+            print("Неверный выбор. Пожалуйста, попробуйте снова.")
+        save_current_user_state(user_manager.current_user)
+
+
+if __name__ == "__main__":
+    main()
