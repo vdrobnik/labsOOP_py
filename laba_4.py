@@ -1,75 +1,116 @@
 import time
-# 1) Создать виртуальную клавиатуру с переназначаемыми действиями для клавиш и комбинаций клавиш,
-# с возможностью отката действий назад.
-# 2) Продемонстрировать работу клавиатуры сделал WorkFlow из нажатий различных комбинаций клавиш и откатов назад.
-# Симулировать демонстрацию нажатий клавиш путем вывода значения в консоль и задержкой между нажатиями
-# 3) Продемонстрировать переназначение клавиши и комбинации клавиш с перезапуcком WorkFlow
+# Не работает откат послднего действяи. не продемонстрирован вывод в консоль от клавиш, пчатающих текст
 
-# Погребной Владимир
-# https://github.com/vdrobnik/labsOOP_py
-# https://disk.yandex.ru/d/tCHxZ0RMunDLog
+class Command:
+    def execute(self):
+        pass
 
-class Key:
-    def __init__(self, keyName):
-        self.keyName = keyName
-
-    def getName(self):
-        return self.keyName
-
-    def setName(self, newKey):
-        self.keyName = newKey
-
-    def press_key(self, actions_obj):
-        print(f'Нажата кнопка: {self.keyName}')
-        time.sleep(1)
-        actions_obj.addAction(self)
-
-    def ExchangeName(self, newKeyName, actions_obj):
-        print(f'Переобозначение: {self.keyName} -> {newKeyName}')
-        for key in actions_obj.getActions():
-            if key.getName() == self.keyName:
-                key.setName(newKeyName)
-        return actions_obj
-
-
-class Actions:
+class VirtualKeyboard(Command):
     def __init__(self):
-        self.actions = []
+        self._actions = []
+        self._current_key = None
 
-    def getActions(self):
-        return self.actions
+    @property
+    def actions(self):
+        return self._actions
 
-    def addAction(self, key):
-        self.actions.append(key)
+    @property
+    def current_key(self):
+        return self._current_key
 
-    def canselLastAction(self):
-        if len(self.actions) > 0:
-            last_action = self.actions.pop()
-            print(f'Последние нажатие - {last_action.getName()}')
+    @current_key.setter
+    def current_key(self, key):
+        self._current_key = key
+
+    @current_key.deleter
+    def current_key(self):
+        del self._current_key
+
+    def execute(self):
+        pass
+
+    def press_key(self, key):
+        self.current_key = key
+        action = f"Pressed {key}"
+        self._actions.append(action)
+        print(action)
+
+    def reassign_key(self, key, new_action):
+        if key in self._actions:
+            original_action = f"Pressed {key}"
+            index = self._actions.index(original_action)
+            reassigned_action = f"Reassigned {key} to {new_action}"
+            self._actions.insert(index + 1, reassigned_action)
+            print(f"Key {key} reassigned to {new_action}")
         else:
-            print('Нет событий нажатия')
+            print(f"Key {key} not found in actions")
 
-    def printActions(self):
-        for iter in self.actions:
-            print(iter.getName())
+    def undo_last_action(self):
+        if self._actions:
+            undone_action = self._actions.pop()
+            print(f"Undone action: {undone_action}")
+            if self._actions:
+                print(f"Last key pressed after rollback: {self._actions[-1].split()[-1]}")
+            else:
+                print("No actions remaining")
+        else:
+            print("No actions to undo")
 
+    def demonstrate_workflow(self):
+        self.press_key('A')
+        self.press_key('B')
+        self.undo_last_action()
+        self.press_key('C')
+        self.reassign_key('C', 'Print Hello')#переназначение С для печати приветствия
+        self.press_key('C')
+        self.undo_last_action()
+        self.undo_last_action()
 
-if __name__ == '__main__':
-    actions_obj = Actions()
-    key1 = Key('CTRL')
-    key1.press_key(actions_obj)
-    key2 = Key('SHIFT')
-    key2.press_key(actions_obj)
-    actions_obj.printActions()
-    print('|||||||||||||||||||||||||||||||')
-    # Откат последнего действия
-    actions_obj.canselLastAction()
-    actions_obj.printActions()
-    print('|||||||||||||||||||||||||||||||')
-    key2.press_key(actions_obj)
-    actions_obj.printActions()
-    print('|||||||||||||||||||||||||||||||')
-    # Переназначение клавиш
-    actions = key2.ExchangeName('Alt', actions_obj)
-    actions_obj.printActions()
-    print('|||||||||||||||||||||||||||||||')
+    def simulate_keystrokes(self):
+        for key in "Hello, World!":
+            self.press_key(key)
+            time.sleep(0.5)
+
+class Browser(VirtualKeyboard):
+    def close_browser(self):
+        self._actions.append("Closing the browser")
+        print("Closing the browser")
+
+    def open_browser(self):
+        self._actions.append("Open the browser")
+        print("Open the browser")
+
+    def undo_last_action(self):
+        if self.actions:
+            undone_action = self.actions.pop()
+            print(f"Undone action: {undone_action}")
+            if "Pressed" in undone_action:
+                print(f"Last key pressed after rollback: {self.actions[-1].split()[-1]}")
+            elif "Closing the browser" in undone_action:
+                print("Reopening the browser")
+                self.actions.append("Reopened the browser")
+            else:
+                print("No actions remaining")
+        else:
+            print("No actions to undo")
+
+if __name__ == "__main__":
+    keyboard = Browser()
+
+    print("Demonstrating Workflow:")
+    keyboard.demonstrate_workflow()
+
+    print("\nSimulating Keystrokes:")
+    keyboard.simulate_keystrokes()
+
+    print("\nDemonstrating Reassignment and Workflow Restart:")
+    keyboard.press_key('D')
+    keyboard.press_key('E')
+    keyboard.undo_last_action()
+    keyboard.undo_last_action()
+    # keyboard.demonstrate_workflow()
+
+    print("\nClosing and Reopening Browser:")
+    keyboard.open_browser()
+    keyboard.close_browser()
+    keyboard.undo_last_action()
