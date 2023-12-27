@@ -2,7 +2,9 @@ import time
 # Не работает откат послднего действяи. не продемонстрирован вывод в консоль от клавиш, пчатающих текст
 
 class Command:
-    def execute(self):
+    def execute(self, num):
+        pass
+    def undo(self, num):
         pass
 
 class VirtualKeyboard(Command):
@@ -26,11 +28,20 @@ class VirtualKeyboard(Command):
     def current_key(self):
         del self._current_key
 
-    def execute(self):
-        pass
+    # Переопределяем наследованные функции
+    def undo(self, num):
+        print(f"[INFO] Cansel command-> {num}")
+    def execute(self, num):
+        if "Pressed" in num or "Reassigned" in num:
+            print( f"[INFO] Command-> {num}")
+        elif(len(num) == 1):
+            print(f"[INFO] Button->{num}")
+        else:
+            print("[INFO]")
 
     def press_key(self, key):
         self.current_key = key
+        self.execute(key)
         action = f"Pressed {key}"
         self._actions.append(action)
         print(action)
@@ -48,6 +59,7 @@ class VirtualKeyboard(Command):
     def undo_last_action(self):
         if self._actions:
             undone_action = self._actions.pop()
+            self.undo(undone_action)
             print(f"Undone action: {undone_action}")
             if self._actions:
                 print(f"Last key pressed after rollback: {self._actions[-1].split()[-1]}")
@@ -55,6 +67,16 @@ class VirtualKeyboard(Command):
                 print("No actions remaining")
         else:
             print("No actions to undo")
+
+    # def demonstrate_workflow(self):
+        # self.press_key('A')
+        # self.press_key('B')
+        # self.undo_last_action()
+        # self.press_key('C')
+        # self.reassign_key('C', 'Print Hello')
+        # self.press_key('C')
+        # self.undo_last_action()
+        # self.undo_last_action()
 
     def demonstrate_workflow(self):
         self.press_key('A')
@@ -72,10 +94,12 @@ class VirtualKeyboard(Command):
             time.sleep(0.5)
 
 class Browser(VirtualKeyboard):
+    #отмена действия открытия
     def close_browser(self):
         self._actions.append("Closing the browser")
         print("Closing the browser")
 
+    # отмена действия закрытия
     def open_browser(self):
         self._actions.append("Open the browser")
         print("Open the browser")
@@ -83,6 +107,7 @@ class Browser(VirtualKeyboard):
     def undo_last_action(self):
         if self.actions:
             undone_action = self.actions.pop()
+            self.undo(undone_action)
             print(f"Undone action: {undone_action}")
             if "Pressed" in undone_action:
                 print(f"Last key pressed after rollback: {self.actions[-1].split()[-1]}")
@@ -108,7 +133,6 @@ if __name__ == "__main__":
     keyboard.press_key('E')
     keyboard.undo_last_action()
     keyboard.undo_last_action()
-    # keyboard.demonstrate_workflow()
 
     print("\nClosing and Reopening Browser:")
     keyboard.open_browser()
