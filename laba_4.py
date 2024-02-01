@@ -125,12 +125,7 @@ if __name__ == "__main__":
     print("\n[Simulating Keystrokes]:")
     keyboard.simulate_keystrokes()
 
-    print("\nDemonstrating Reassignment and Workflow Restart:")
+    print("\nDemonstrating Browser and Workflow Restart:")
     keyboard.press_key('D')
     keyboard.press_key('Browser open')
     keyboard.press_key('ctrl+z')
-
-    # print("\nClosing and Reopening Browser:")
-    # keyboard.open_browser()
-    # keyboard.close_browser()
-    # keyboard.undo_last_action()
