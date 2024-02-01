@@ -1,8 +1,9 @@
 import time
-# Не работает откат послднего действяи. не продемонстрирован вывод в консоль от клавиш, пчатающих текст
+from typing import Dict
 
-class Command:
-    def execute(self, num):
+
+class Command:              # Поле num необходимо для того, чтобы при наследовании
+    def execute(self, num): # можно было передавать значение клавиши/сочетания клавиш
         pass
     def undo(self, num):
         pass
@@ -11,130 +12,125 @@ class VirtualKeyboard(Command):
     def __init__(self):
         self._actions = []
         self._current_key = None
-
+        self._volume = 50
+        self.__key_actions = {
+            'FN+F2': 'Volume down',
+            'FN+F3': 'Volume up',
+        }
     @property
     def actions(self):
         return self._actions
-
     @property
     def current_key(self):
         return self._current_key
-
+    @property
+    def volume(self):
+        return self._volume
     @current_key.setter
     def current_key(self, key):
         self._current_key = key
-
     @current_key.deleter
     def current_key(self):
         del self._current_key
 
     # Переопределяем наследованные функции
-    def undo(self, num):
-        print(f"[INFO] Cansel command-> {num}")
     def execute(self, num):
-        if "Pressed" in num or "Reassigned" in num:
-            print( f"[INFO] Command-> {num}")
-        elif(len(num) == 1):
-            print(f"[INFO] Button->{num}")
+        # self._actions.append(num)
+        if num in self.__key_actions.keys(): # Смотрим есть ли в словаре наша команда
+            action = self.__key_actions.get(num)
+            self.volume_change(action.split()[-1])
+            print(f"[INFO] Pressed {num} equal {action}")
+        elif num.split()[0] == "Browser":# Browser open/close
+            self.browser_change(num.split()[-1])
+            print(f"[INFO] {num}")
         else:
-            print("[INFO]")
+            print(f"[INFO] Pressed button {num.split()[-1]}")
+
+    def undo(self, last_action):
+        deleted_history = self._actions[-1]
+        self._actions.pop() # Удаляем последний элемент из списка действий
+        print(f"Actions history: {self._actions}")
+        split_last_action = last_action.split()[-1]
+        if split_last_action == "FN+F2": # Отмена уменьшения громкости = увеличение громкости
+            action = self.__key_actions.get("FN+F3")
+            self.volume_change(action.split()[-1]) # Отправляем значение из словаря в функцию громкости
+            print(f"[INFO] {split_last_action} and ctrl+z equal {action}")
+        elif split_last_action == "FN+F3": # Отмена увеличения громкости = уменьшение громкости
+            action = self.__key_actions.get("FN+F2")
+            self.volume_change(action.split()[-1]) # Отправляем значение из словаря в функцию громкости
+            print(f"[INFO] {split_last_action} and ctrl+z equal {action}")
+        elif deleted_history.split()[1] == "Browser":
+            if split_last_action == "open":
+                self.browser_change('close')  # Browser open/close
+                print(f"[INFO] After CTRL+Z: last action is pressed {self._actions[-1]}")
+            elif split_last_action == 'close':
+                self.browser_change('open')  # Browser open/close
+                print(f"[INFO] After CTRL+Z: last action is pressed {self._actions[-1]}")
+        else:
+            print(f"[INFO] Cancel command-> Pressed {split_last_action}")
+            print(f"[INFO] After CTRL+Z: last action is pressed {self._actions[-1]}")
+
+    def volume_change(self, change, num=2):          # num - это насколько мы изменяем звук
+         if change == 'up' and self._volume < 100:   # change - это в какую сторону меняем громкость
+             self._volume +=num
+             print(f"[INFO_VOLUME_CHANGER] volume UP: {self._volume}")
+         elif change == 'down' and self._volume > 0:
+             self._volume -=num
+             print(f"[INFO_VOLUME_CHANGER] volume DOWN: {self._volume}")
+         else:
+             print("[INFO] Volume Changer Error-> Range limit")
+
+    def browser_change(self, condition):
+        if condition == "open":
+            print("[INFO_BROWSER] Browser is opening")
+        elif condition == 'close':
+            print("[INFO_BROWSER] Browser is closing")
 
     def press_key(self, key):
-        self.current_key = key
-        self.execute(key)
+        self._current_key = key
         action = f"Pressed {key}"
-        self._actions.append(action)
         print(action)
-
-    def reassign_key(self, key, new_action):
-        if key in self._actions:
-            original_action = f"Pressed {key}"
-            index = self._actions.index(original_action)
-            reassigned_action = f"Reassigned {key} to {new_action}"
-            self._actions.insert(index + 1, reassigned_action)
-            print(f"Key {key} reassigned to {new_action}")
-        else:
-            print(f"Key {key} not found in actions")
-
-    def undo_last_action(self):
-        if self._actions:
-            undone_action = self._actions.pop()
-            self.undo(undone_action)
-            print(f"Undone action: {undone_action}")
-            if self._actions:
-                print(f"Last key pressed after rollback: {self._actions[-1].split()[-1]}")
+        if key in self.__key_actions:
+            self._actions.append(action)
+            self.execute(key)
+        elif key == "ctrl+z":
+            if len(self._actions) > 1:
+                self.undo(self._actions[-1])
             else:
-                print("No actions remaining")
+                print("[INFO] CTRL+Z cannot be used, the action's history is empty")
         else:
-            print("No actions to undo")
-
-    # def demonstrate_workflow(self):
-        # self.press_key('A')
-        # self.press_key('B')
-        # self.undo_last_action()
-        # self.press_key('C')
-        # self.reassign_key('C', 'Print Hello')
-        # self.press_key('C')
-        # self.undo_last_action()
-        # self.undo_last_action()
+            self._actions.append(action)
+            self.execute(key)
 
     def demonstrate_workflow(self):
+        self.press_key('ctrl+z')
         self.press_key('A')
-        self.press_key('B')
-        self.undo_last_action()
+        self.press_key('alt')
+        self.press_key('FN+F2')
+        self.press_key("ctrl+z")
+        self.press_key('FN+F3')
         self.press_key('C')
-        self.reassign_key('C', 'Print Hello')#переназначение С для печати приветствия
-        self.press_key('C')
-        self.undo_last_action()
-        self.undo_last_action()
 
     def simulate_keystrokes(self):
-        for key in "Hello, World!":
+        for key in "Hello,World!":
             self.press_key(key)
             time.sleep(0.5)
 
-class Browser(VirtualKeyboard):
-    #отмена действия открытия
-    def close_browser(self):
-        self._actions.append("Closing the browser")
-        print("Closing the browser")
-
-    # отмена действия закрытия
-    def open_browser(self):
-        self._actions.append("Open the browser")
-        print("Open the browser")
-
-    def undo_last_action(self):
-        if self.actions:
-            undone_action = self.actions.pop()
-            self.undo(undone_action)
-            print(f"Undone action: {undone_action}")
-            if "Pressed" in undone_action:
-                print(f"Last key pressed after rollback: {self.actions[-1].split()[-1]}")
-            elif "Closing the browser" in undone_action:
-                print("Reopening the browser")
-                self.actions.append("Reopened the browser")
-            else:
-                print("No actions remaining")
-        else:
-            print("No actions to undo")
-
 if __name__ == "__main__":
-    keyboard = Browser()
+    keyboard = VirtualKeyboard()
 
-    print("Demonstrating Workflow:")
+    print("[Demonstrating Workflow]:")
     keyboard.demonstrate_workflow()
 
-    print("\nSimulating Keystrokes:")
+    print("\n[Simulating Keystrokes]:")
     keyboard.simulate_keystrokes()
 
     print("\nDemonstrating Reassignment and Workflow Restart:")
     keyboard.press_key('D')
-    keyboard.press_key('E')
-    keyboard.undo_last_action()
-    keyboard.undo_last_action()
+    keyboard.press_key('Browser open')
+    keyboard.press_key('ctrl+z')
 
-    print("\nClosing and Reopening Browser:")
-    keyboard.open_browser()
-    keyboard.close_browser()
-    keyboard.undo_last_action()
+    # print("\nClosing and Reopening Browser:")
+    # keyboard.open_browser()
+    # keyboard.close_browser()
+    # keyboard.undo_last_action()
