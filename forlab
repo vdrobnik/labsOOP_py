@@ -58,32 +58,32 @@ keyboard.assign_action("Ctrl+Alt+X", Action2())
 keyboard.assign_action("Shift+Z", Action3())
 
 keyboard.press_key("F1")  # Выполнено действие 1
-time.sleep(1)  # Задержка в 1 секунду
+time.sleep(1) 
 
 keyboard.press_key("Ctrl+Alt+X")  # Выполнено действие 2
-time.sleep(1)  # Задержка в 1 секунду
+time.sleep(1)
 
 keyboard.press_key("Shift+Z")  # Выполнено действие 3
-time.sleep(1)  # Задержка в 1 секунду
+time.sleep(1)
 
 keyboard.undo_last_action()  # Отменено действие 3
-time.sleep(1)  # Задержка в 1 секунду
+time.sleep(1) 
 
 keyboard.assign_action("F1", Action3())
 keyboard.assign_action("Ctrl+Alt+X", Action1())
 
 keyboard.undo_last_action()
 
-keyboard.press_key("F1")  # Выполнено действие 3
-time.sleep(1)  # Задержка в 1 секунду
+keyboard.press_key("F1")
+time.sleep(1)
 
-keyboard.press_key("Ctrl+Alt+X")  # Выполнено действие 1
+keyboard.press_key("Ctrl+Alt+X")
 time.sleep(1)  # Задержка в 1 секунду
 
 keyboard = VirtualKeyboard()
 
-keyboard.press_key("F1")  # Выполнено действие 1 (новое переназначение)
-time.sleep(1)  # Задержка в 1 секунду
+keyboard.press_key("F1")  # (новое переназначение)
+time.sleep(1)
 
 keyboard.press_key("Ctrl+Alt+X")  # Выполнено действие 2 (новое переназначение)
-time.sleep(1)  # Задержка в 1 секунду
+time.sleep(1)
