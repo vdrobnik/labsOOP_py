@@ -14,19 +14,19 @@ class Action1(Command):
     def undo(self):
         print("Отменено действие 1")
 
-class Action2(Command):
+class BrowserOpener(Command):
     def execute(self):
-        print("Выполнено действие 2")
+        print("Браузер Открыт")
 
     def undo(self):
-        print("Отменено действие 2")
+        print("Браузер закрыт")
 
-class Action3(Command):
+class VolumeUpper(Command):
     def execute(self):
-        print("Выполнено действие 3")
+        print("Громкость увеличена")
 
     def undo(self):
-        print("Отменено действие 3")
+        print("Громкость уменьшена")
 
 class VirtualKeyboard:
     def __init__(self):
