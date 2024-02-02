@@ -78,12 +78,12 @@ keyboard.press_key("F1")
 time.sleep(1)
 
 keyboard.press_key("Ctrl+Alt+X")
-time.sleep(1)  # Задержка в 1 секунду
+time.sleep(1) 
 
 keyboard = VirtualKeyboard()
 
 keyboard.press_key("F1")  # (новое переназначение)
 time.sleep(1)
 
-keyboard.press_key("Ctrl+Alt+X")  # Выполнено действие 2 (новое переназначение)
+keyboard.press_key("Ctrl+Alt+X")  # (новое переназначение)
 time.sleep(1)
