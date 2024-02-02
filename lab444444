@@ -1,0 +1,127 @@
+import time
+from typing import Dict
+
+class Command:              # Поле num необходимо для того, чтобы при наследовании
+    def execute(self, num): # можно было передавать значение клавиши/сочетания клавиш
+        pass
+    def undo(self, num):
+        pass
+
+key_actions = {
+    'FN+F2': 'Volume down',
+    'FN+F3': 'Volume up'
+}
+
+class VirtualKeyboard():
+    def __init__(self):
+        self._actions = []
+        self._current_key = None
+
+    @property#          Преобразует метод в переменную экземпляра
+    def actions(self):# с точки зрения пользователя класса
+        return self._actions
+    @property
+    def current_key(self):
+        return self._current_key
+    @current_key.setter# Отвечает за изменение переменной
+    def current_key(self, key):
+        self._current_key = key
+    @current_key.deleter
+    def current_key(self):
+        del self._current_key
+
+    def press_key(self, key):
+        self._current_key = key
+        action = f"Pressed {key}"
+        print(action)
+        if key == "ctrl+z":
+            if len(self._actions) > 1:
+                Browser.undo(self._actions(-1))
+                VolumeChanger.undo(self._actions(-1))
+                self._actions.pop()
+            else:
+                print("[INFO] CTRL+Z cannot be used, the action's history is empty")
+        else:
+            self._actions.append(action)
+            Browser.execute(num=key)
+            VolumeChanger.execute(num=key)
+
+    def simulate_keystrokes(self):
+        for key in "Hello,World!":
+            self.press_key(key)
+            time.sleep(0.5)
+
+class VolumeChanger(Command):
+    def __init__(self):
+        self._volume = 50
+
+    def volume_change(self, change, num=2):  # num - это насколько мы изменяем звук
+        if change == 'up' and self._volume < 100:  # change - это в какую сторону меняем громкость
+            self._volume += num
+            print(f"[INFO_VOLUME_CHANGER] volume UP: {self._volume}")
+        elif change == 'down' and self._volume > 0:
+            self._volume -= num
+            print(f"[INFO_VOLUME_CHANGER] volume DOWN: {self._volume}")
+        else:
+            print("[INFO] Volume Changer Error-> Range limit")
+
+    def execute(self, num):
+        if num in key_actions.keys(): # Смотрим есть ли в словаре наша команда
+            action = key_actions.get(num)
+            self.volume_change(action.split()[-1])
+            print(f"[INFO] Pressed {num} equal {action}")
+
+    def undo(self, num):
+        split_last_action = num.split()[-1]
+        if split_last_action == "FN+F2": # Отмена уменьшения громкости = увеличение громкости
+            action = key_actions.get("FN+F3")
+            self.volume_change(action.split()[-1]) # Отправляем значение из словаря в функцию громкости
+            print(f"[INFO] {num} and ctrl+z equal {action}")
+        elif split_last_action == "FN+F3": # Отмена увеличения громкости = уменьшение громкости
+            action = key_actions.get("FN+F2")
+            self.volume_change(action.split()[-1]) # Отправляем значение из словаря в функцию громкости
+            print(f"[INFO] {num} and ctrl+z equal {action}")
+
+class Browser(Command):
+    def __init__(self):
+        self._status = None
+    @property
+    def status(self):
+        return self._status
+
+    def execute(self, num):
+        if num.split()[0] == "Browser":  # Browser open/close
+            self.browser_change(num.split()[-1])
+            print(f"[INFO] {num}")
+
+    def undo(self, num):
+        split_last_action = num.split()[-1]
+        if num.split()[1] == "Browser":
+            if split_last_action == "open":
+                self.browser_change('close')  # Browser open/close
+            elif split_last_action == 'close':
+                self.browser_change('open')  # Browser open/close
+
+    def browser_change(self, condition):
+        if condition == "open":
+            print("[INFO_BROWSER] Browser is opening")
+        elif condition == 'close':
+            print("[INFO_BROWSER] Browser is closing")
+
+
+if __name__ == "__main__":
+    keyboard = VirtualKeyboard()
+    volume = VolumeChanger()
+
+    keyboard.press_key('ctrl+z')
+    keyboard.press_key('A')
+    keyboard.press_key('alt')
+    keyboard.press_key('FN+F2')
+    keyboard.press_key("ctrl+z")
+    keyboard.press_key('FN+F3')
+    keyboard.press_key('C')
+
+    print("\nDemonstrating Browser and Workflow Restart:")
+    keyboard.press_key('D')
+    keyboard.press_key('Browser open')
+    keyboard.press_key('ctrl+z')
